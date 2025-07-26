@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Clinic Appointment Booking</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body {
+    background: #f9fafb;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    padding: 1rem;
+  }
+  .container {
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: 1.25rem;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+  h1 {
+    color: #2563eb;
+    font-weight: 700;
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  label {
+    font-weight: 600;
+    color: #374151;
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  input, select, textarea, button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    outline-offset: 2px;
+    outline-color: transparent;
+    transition: outline-color 0.2s ease;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline-color: #2563eb;
+    border-color: #2563eb;
+  }
+  button {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 1.25rem;
+    transition: background-color 0.2s ease;
+  }
+  button:hover {
+    background-color: #1e40af;
+  }
+  .hidden {
+    display: none;
+  }
+  #message {
+    margin-top: 1rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  #message.error {
+    color: #dc2626;
+  }
+  #message.success {
+    color: #16a34a;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Book Your Appointment</h1>
+
+    <form id="bookingForm">
+      <div>
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required />
+      </div>
+
+      <div>
+        <label for="phone">Phone Number (WhatsApp)</label>
+        <input type="tel" id="phone" name="phone" placeholder="+966501234567" required />
+      </div>
+
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="example@email.com" required />
+      </div>
+
+      <div>
+        <label for="reason">Reason for Visit</label>
+        <textarea id="reason" name="reason" placeholder="Briefly describe your concern" rows="3" required></textarea>
+      </div>
+
+      <div>
+        <label for="date">Select Date</label>
+        <input type="date" id="date" name="date" required />
+      </div>
+
+      <div id="timeSlotSection" class="hidden">
+        <label for="timeSlot">Available Time Slots</label>
+        <select id="timeSlot" name="timeSlot" required></select>
+      </div>
+
+      <button type="submit" id="submitBtn">Check Availability</button>
+    </form>
+
+    <p id="message"></p>
+  </div>
+
+<script>
+  const bookingForm = document.getElementById('bookingForm');
+  const dateInput = document.getElementById('date');
+  const timeSlotSection = document.getElementById('timeSlotSection');
+  const timeSlotSelect = document.getElementById('timeSlot');
+  const messageEl = document.getElementById('message');
+  const submitBtn = document.getElementById('submitBtn');
+
+  const today = new Date();
+  const maxDate = new Date();
+  maxDate.setDate(today.getDate() + 7);
+
+  // Format date to yyyy-mm-dd for input[type=date]
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  dateInput.min = formatDate(today);
+  dateInput.max = formatDate(maxDate);
+
+  dateInput.addEventListener('input', () => {
+    const selectedDate = new Date(dateInput.value);
+    if (selectedDate.getDay() === 0) {
+      alert('Sundays are not available. Please select another date.');
+      dateInput.value = '';
+    }
+  });
+
+  // Step tracker: false = waiting for Step 1 (check availability), true = ready for Step 2 (book)
+  let step2Ready = false;
+
+  bookingForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    messageEl.textContent = '';
+    messageEl.className = '';
+
+    const formData = new FormData(bookingForm);
+    const data = Object.fromEntries(formData.entries());
+
+    if (!step2Ready) {
+      // Step 1: Send data to /available-slots webhook to get available time slots
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Checking availability...';
+
+      try {
+        const response = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+
+        const slots = await response.json();
+
+        if (!Array.isArray(slots) || slots.length === 0) {
+          messageEl.textContent = 'No available time slots for the selected date. Please choose another date.';
+          messageEl.className = 'error';
+          timeSlotSection.classList.add('hidden');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Check Availability';
+          return;
+        }
+
+        // Populate time slots dropdown
+        timeSlotSelect.innerHTML = '';
+        slots.forEach(slot => {
+          const option = document.createElement('option');
+          option.value = slot.value;
+          option.textContent = slot.label;
+          timeSlotSelect.appendChild(option);
+        });
+
+        // Show time slots section, change button text
+        timeSlotSection.classList.remove('hidden');
+        submitBtn.textContent = 'Confirm Booking';
+        step2Ready = true;
+
+      } catch (error) {
+        messageEl.textContent = 'Error fetching time slots. Please try again later.';
+        messageEl.className = 'error';
+      }
+
+      submitBtn.disabled = false;
+
+    } else {
+      // Step 2: Send full data including selected time slot to /submit-booking webhook
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Booking appointment...';
+
+      try {
+        const response = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/submit-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+
+        const result = await response.json();
+
+        if (result.success) {
+          messageEl.textContent = 'Your appointment is confirmed! You will receive confirmation on WhatsApp and email shortly.';
+          messageEl.className = 'success';
+
+          // Reset form & UI
+          bookingForm.reset();
+          timeSlotSection.classList.add('hidden');
+          submitBtn.textContent = 'Check Availability';
+          step2Ready = false;
+
+        } else {
+          throw new Error(result.message || 'Booking failed');
+        }
+
+      } catch (error) {
+        messageEl.textContent = `Error booking appointment: ${error.message}`;
+        messageEl.className = 'error';
+      }
+
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
