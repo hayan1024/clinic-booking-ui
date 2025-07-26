@@ -4,188 +4,123 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clinic Appointment Booking</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background: #f9f9f9;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        padding-top: 40px;
-        min-height: 100vh;
-      }
-      .card {
-        background: #fff;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 500px;
-      }
-      h2 {
-        margin-bottom: 20px;
-        font-weight: 600;
-        color: #333;
-        text-align: center;
-      }
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 500;
-        color: #333;
-      }
-      input, select {
-        width: 100%;
-        padding: 12px;
-        margin-bottom: 20px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        font-size: 16px;
-        box-sizing: border-box;
-      }
-      button {
-        width: 100%;
-        padding: 14px;
-        background: #4f46e5;
-        color: white;
-        font-size: 16px;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 0.3s ease;
-      }
-      button:hover {
-        background: #4338ca;
-      }
-      #slotSection {
-        display: none;
-      }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <div class="card">
-      <h2>Book an Appointment</h2>
-      <form id="bookingForm">
-        <label for="fullName">Full Name</label>
-        <input type="text" id="fullName" name="fullName" required placeholder="John Doe" />
-
-        <label for="email">Email Address</label>
-        <input type="email" id="email" name="email" required placeholder="you@example.com" />
-
-        <label for="phone">Phone Number</label>
-        <input type="tel" id="phone" name="phone" required placeholder="+966 5xxxxxxx" />
-
-        <label for="reason">Reason for Visit</label>
-        <input type="text" id="reason" name="reason" required placeholder="Consultation, checkup, etc." />
-
-        <label for="date">Select Date</label>
-        <select id="date" name="date" required></select>
-
-        <div id="slotSection">
-          <label for="timeSlot">Select Time Slot</label>
-          <select id="timeSlot" name="timeSlot" required></select>
+  <body class="bg-gray-50 text-gray-900">
+    <div class="max-w-xl mx-auto p-6 mt-10 bg-white rounded-2xl shadow-lg">
+      <h1 class="text-2xl font-bold mb-4 text-center">Clinic Appointment Booking</h1>
+      <form id="bookingForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium">Full Name</label>
+          <input name="fullName" required placeholder="Enter your full name" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
         </div>
-
-        <button type="submit">Book Appointment</button>
+        <div>
+          <label class="block text-sm font-medium">Reason for Visit</label>
+          <input name="reason" required placeholder="e.g., Consultation, Follow-up" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Phone Number</label>
+          <input name="phone" required placeholder="e.g., +966512345678" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Email</label>
+          <input name="email" type="email" required placeholder="e.g., you@example.com" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Select Date</label>
+          <select name="date" id="dateSelect" required class="mt-1 block w-full p-2 border border-gray-300 rounded-xl"></select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Select Time Slot</label>
+          <select name="timeSlot" id="slotSelect" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl">
+            <option value="">-- Please choose a date first --</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-xl font-semibold hover:bg-blue-700">Submit</button>
       </form>
+      <div id="status" class="text-center mt-4 text-sm"></div>
     </div>
 
     <script>
-      const dateSelect = document.getElementById("date");
-      const slotSelect = document.getElementById("timeSlot");
-      const slotSection = document.getElementById("slotSection");
+      // Populate the date dropdown
+      const dateSelect = document.getElementById('dateSelect');
+      const slotSelect = document.getElementById('slotSelect');
+      const today = new Date();
 
-      function getNext7Days() {
-        const today = new Date();
-        const dates = [];
-        for (let i = 0; i < 7; i++) {
-          const next = new Date();
-          next.setDate(today.getDate() + i);
-          if (next.getDay() === 0) continue; // Skip Sunday
-          const label = next.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-          const value = next.toISOString().split('T')[0];
-          dates.push({ label, value });
-        }
-        return dates;
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+
+        // Skip Sundays
+        if (date.getDay() === 0) continue;
+
+        const label = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        const value = date.toISOString().split('T')[0];
+
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        dateSelect.appendChild(option);
       }
 
-      function populateDates() {
-        getNext7Days().forEach(date => {
-          const option = document.createElement("option");
-          option.value = date.value;
-          option.textContent = date.label;
-          dateSelect.appendChild(option);
-        });
-      }
-
-      dateSelect.addEventListener("change", async () => {
+      dateSelect.addEventListener('change', async () => {
+        slotSelect.innerHTML = '<option>Loading...</option>';
         const selectedDate = dateSelect.value;
-        if (!selectedDate) return;
-
-        // Show loading placeholder
-        slotSelect.innerHTML = `<option>Loading available slots...</option>`;
-        slotSection.style.display = "block";
 
         try {
-          const res = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ date: selectedDate })
           });
 
           const data = await res.json();
-          slotSelect.innerHTML = "";
+          const slots = data.slots || [];
 
-          if (Array.isArray(data) && data.length > 0) {
-            data.forEach(slot => {
-              const option = document.createElement("option");
-              option.value = slot.value;
-              option.textContent = slot.label;
-              slotSelect.appendChild(option);
-            });
+          slotSelect.innerHTML = '';
+
+          if (slots.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No available slots';
+            slotSelect.appendChild(opt);
           } else {
-            const option = document.createElement("option");
-            option.textContent = "No available slots";
-            option.disabled = true;
-            slotSelect.appendChild(option);
+            slotSelect.appendChild(new Option('-- Select Time Slot --', ''));
+            slots.forEach(slot => {
+              const opt = document.createElement('option');
+              opt.value = slot.value;
+              opt.textContent = slot.label;
+              slotSelect.appendChild(opt);
+            });
           }
         } catch (err) {
-          slotSelect.innerHTML = `<option>Error loading slots</option>`;
+          slotSelect.innerHTML = '<option>Error loading slots</option>';
         }
       });
 
-      document.getElementById("bookingForm").addEventListener("submit", async function (e) {
+      document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = {
-          fullName: this.fullName.value,
-          email: this.email.value,
-          phone: this.phone.value,
-          reason: this.reason.value,
-          date: this.date.value,
-          timeSlot: this.timeSlot.value,
-        };
+
+        const formData = Object.fromEntries(new FormData(e.target).entries());
 
         try {
-          const res = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
           });
 
           if (res.ok) {
-            alert("Appointment successfully submitted!");
-            this.reset();
-            slotSection.style.display = "none";
+            document.getElementById('status').textContent = 'Form submitted successfully!';
+            e.target.reset();
+            slotSelect.innerHTML = '<option>-- Please choose a date first --</option>';
           } else {
-            alert("Something went wrong. Please try again.");
+            document.getElementById('status').textContent = 'Submission failed.';
           }
-        } catch (error) {
-          alert("Error sending data. Check your connection.");
+        } catch (err) {
+          document.getElementById('status').textContent = 'Error submitting form.';
         }
       });
-
-      populateDates();
     </script>
   </body>
 </html>
