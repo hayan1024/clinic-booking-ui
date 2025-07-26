@@ -4,123 +4,176 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clinic Appointment Booking</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-gray-50 text-gray-900">
-    <div class="max-w-xl mx-auto p-6 mt-10 bg-white rounded-2xl shadow-lg">
-      <h1 class="text-2xl font-bold mb-4 text-center">Clinic Appointment Booking</h1>
-      <form id="bookingForm" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium">Full Name</label>
-          <input name="fullName" required placeholder="Enter your full name" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Reason for Visit</label>
-          <input name="reason" required placeholder="e.g., Consultation, Follow-up" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Phone Number</label>
-          <input name="phone" required placeholder="e.g., +966512345678" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Email</label>
-          <input name="email" type="email" required placeholder="e.g., you@example.com" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Select Date</label>
-          <select name="date" id="dateSelect" required class="mt-1 block w-full p-2 border border-gray-300 rounded-xl"></select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Select Time Slot</label>
-          <select name="timeSlot" id="slotSelect" class="mt-1 block w-full p-2 border border-gray-300 rounded-xl">
-            <option value="">-- Please choose a date first --</option>
-          </select>
-        </div>
-        <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-xl font-semibold hover:bg-blue-700">Submit</button>
-      </form>
-      <div id="status" class="text-center mt-4 text-sm"></div>
-    </div>
-
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
     <script>
-      // Populate the date dropdown
-      const dateSelect = document.getElementById('dateSelect');
-      const slotSelect = document.getElementById('slotSelect');
-      const today = new Date();
+      const fetchSlots = async (date) => {
+        const res = await fetch(
+          'https://hayan1024.app.n8n.cloud/webhook-test/available-slots?date=' + date
+        );
+        const data = await res.json();
+        return data.slots || [];
+      };
 
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
+      const updateTimeSlots = async () => {
+        const dateSelect = document.getElementById('date');
+        const timeSelect = document.getElementById('time');
+        const loader = document.getElementById('loader');
 
-        // Skip Sundays
-        if (date.getDay() === 0) continue;
+        loader.style.display = 'block';
+        timeSelect.innerHTML = '<option value="">Loading...</option>';
 
-        const label = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        const value = date.toISOString().split('T')[0];
+        const slots = await fetchSlots(dateSelect.value);
 
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = label;
-        dateSelect.appendChild(option);
-      }
+        loader.style.display = 'none';
+        timeSelect.innerHTML = '<option value="">Select a time slot (optional)</option>';
 
-      dateSelect.addEventListener('change', async () => {
-        slotSelect.innerHTML = '<option>Loading...</option>';
-        const selectedDate = dateSelect.value;
+        slots.forEach((slot) => {
+          const option = document.createElement('option');
+          option.value = slot.value;
+          option.textContent = slot.label;
+          timeSelect.appendChild(option);
+        });
+      };
 
-        try {
-          const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: selectedDate })
+      const generateDateOptions = () => {
+        const dateSelect = document.getElementById('date');
+        const today = new Date();
+
+        for (let i = 0; i < 7; i++) {
+          const date = new Date();
+          date.setDate(today.getDate() + i);
+
+          // Skip Sundays (0 = Sunday)
+          if (date.getDay() === 0) continue;
+
+          const option = document.createElement('option');
+          const value = date.toISOString().split('T')[0];
+          const label = date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric'
           });
 
-          const data = await res.json();
-          const slots = data.slots || [];
-
-          slotSelect.innerHTML = '';
-
-          if (slots.length === 0) {
-            const opt = document.createElement('option');
-            opt.value = '';
-            opt.textContent = 'No available slots';
-            slotSelect.appendChild(opt);
-          } else {
-            slotSelect.appendChild(new Option('-- Select Time Slot --', ''));
-            slots.forEach(slot => {
-              const opt = document.createElement('option');
-              opt.value = slot.value;
-              opt.textContent = slot.label;
-              slotSelect.appendChild(opt);
-            });
-          }
-        } catch (err) {
-          slotSelect.innerHTML = '<option>Error loading slots</option>';
+          option.value = value;
+          option.textContent = label;
+          dateSelect.appendChild(option);
         }
-      });
+      };
 
-      document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+      window.addEventListener('DOMContentLoaded', () => {
+        generateDateOptions();
+        document.getElementById('date').addEventListener('change', updateTimeSlots);
 
-        const formData = Object.fromEntries(new FormData(e.target).entries());
+        const form = document.getElementById('booking-form');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
 
-        try {
-          const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
+          const formData = new FormData(form);
+          const payload = Object.fromEntries(formData.entries());
 
-          if (res.ok) {
-            document.getElementById('status').textContent = 'Form submitted successfully!';
-            e.target.reset();
-            slotSelect.innerHTML = '<option>-- Please choose a date first --</option>';
+          const response = await fetch(
+            'https://hayan1024.app.n8n.cloud/webhook-test/available-slots',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            }
+          );
+
+          if (response.ok) {
+            alert('Form submitted successfully!');
+            form.reset();
+            document.getElementById('time').innerHTML = '';
           } else {
-            document.getElementById('status').textContent = 'Submission failed.';
+            alert('Failed to submit. Please try again.');
           }
-        } catch (err) {
-          document.getElementById('status').textContent = 'Error submitting form.';
-        }
+        });
       });
     </script>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #f9fafb;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+      }
+      .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        width: 100%;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 1.5rem;
+      }
+      label {
+        font-weight: 600;
+        display: block;
+        margin: 1rem 0 0.25rem;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 0.5rem;
+        width: 100%;
+        margin-top: 1.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      #loader {
+        display: none;
+        text-align: center;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Clinic Appointment Form</h2>
+      <form id="booking-form">
+        <label for="fullName">Full Name</label>
+        <input type="text" name="fullName" placeholder="e.g. John Doe" required />
+
+        <label for="email">Email</label>
+        <input type="email" name="email" placeholder="e.g. john@example.com" required />
+
+        <label for="phone">Phone Number</label>
+        <input type="tel" name="phone" placeholder="e.g. +966-500000000" required />
+
+        <label for="reason">Reason for Visit</label>
+        <input type="text" name="reason" placeholder="e.g. Back pain consultation" required />
+
+        <label for="date">Select Appointment Date</label>
+        <select name="date" id="date" required></select>
+
+        <label for="time">Available Time Slot</label>
+        <select name="time" id="time">
+          <option value="">Select a time slot (optional)</option>
+        </select>
+        <div id="loader">Loading available time slots...</div>
+
+        <button type="submit">Book Appointment</button>
+      </form>
+    </div>
   </body>
 </html>
