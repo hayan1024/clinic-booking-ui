@@ -1,171 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Clinic Appointment Form</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       max-width: 600px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-    label {
-      display: block;
-      margin-top: 1rem;
+      margin: auto;
     }
     select, input, textarea, button {
+      display: block;
       width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.5rem;
-      font-size: 1rem;
-    }
-    #loadingSlots, #noSlots {
-      color: #d9534f;
-      margin-top: 0.5rem;
+      margin: 10px 0;
+      padding: 8px;
     }
   </style>
 </head>
 <body>
 
-<h2>Clinic Appointment Form</h2>
+  <h2>Clinic Appointment Form</h2>
 
-<form id="appointmentForm">
-  <label>Full Name
-    <input type="text" name="fullName" required />
-  </label>
+  <form id="appointmentForm">
+    <label>Full Name</label>
+    <input type="text" name="fullName" required>
 
-  <label>Email
-    <input type="email" name="email" required />
-  </label>
+    <label>Email</label>
+    <input type="email" name="email" required>
 
-  <label>Phone Number
-    <input type="tel" name="phone" required />
-  </label>
+    <label>Phone Number</label>
+    <input type="tel" name="phone" required>
 
-  <label>Reason for Visit
-    <textarea name="reason" rows="3" required></textarea>
-  </label>
+    <label>Reason for Visit</label>
+    <textarea name="reason" required></textarea>
 
-  <label>Select Appointment Date
-    <select name="selectedDate" id="selectedDate" required>
-      <option value="">-- Select a Date --</option>
-      <!-- Dates inserted by JS -->
+    <label>Select Appointment Date</label>
+    <select id="dateSelect" name="selectedDate" required>
+      <option value="">Select a date</option>
     </select>
-  </label>
 
-  <div id="loadingSlots" style="display:none;">Loading available time slots...</div>
-  <div id="noSlots" style="display:none;">All slots booked. Please try another date.</div>
-
-  <label>Available Time Slot
-    <select name="selectedSlot" id="selectedSlot" required>
-      <option value="">-- Select a Time Slot --</option>
+    <label>Available Time Slot</label>
+    <select id="slotSelect" name="selectedSlot" required>
+      <option value="">Loading...</option>
     </select>
-  </label>
 
-  <button type="submit">Book Appointment</button>
-</form>
+    <button type="submit">Book Appointment</button>
+  </form>
 
-<script>
-  // Generate next 7 days except Sundays for the date dropdown
-  function generateDateOptions() {
-    const dateSelect = document.getElementById('selectedDate');
+  <script>
+    // STEP 1: Populate date dropdown (next 7 days excluding Sundays)
+    const dateSelect = document.getElementById('dateSelect');
+    const slotSelect = document.getElementById('slotSelect');
     const today = new Date();
-
-    let daysAdded = 0;
-    let i = 0;
-    while (daysAdded < 7) {
-      let date = new Date(today);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
       date.setDate(today.getDate() + i);
-      i++;
-
-      // Skip Sundays (0 = Sunday)
-      if (date.getDay() === 0) continue;
-
-      const option = document.createElement('option');
-      option.value = date.toISOString().split('T')[0];
-      option.textContent = date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric'
-      });
-
-      dateSelect.appendChild(option);
-      daysAdded++;
-    }
-  }
-
-  const dateSelect = document.getElementById("selectedDate");
-  const slotSelect = document.getElementById("selectedSlot");
-  const loadingMsg = document.getElementById("loadingSlots");
-  const noSlotsMsg = document.getElementById("noSlots");
-  const form = document.getElementById("appointmentForm");
-
-  dateSelect.addEventListener("change", async () => {
-    const selectedDate = dateSelect.value;
-    slotSelect.innerHTML = `<option value="">-- Select a Time Slot --</option>`;
-    noSlotsMsg.style.display = "none";
-
-    if (!selectedDate) return;
-
-    loadingMsg.style.display = "block";
-
-    try {
-      const res = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedDate }),
-      });
-
-      const slots = await res.json();
-      loadingMsg.style.display = "none";
-
-      if (!Array.isArray(slots) || slots.length === 0) {
-        noSlotsMsg.style.display = "block";
-        return;
+      if (date.getDay() !== 0) { // exclude Sundays
+        const yyyyMMdd = date.toISOString().split('T')[0]; // format: YYYY-MM-DD
+        const option = document.createElement('option');
+        option.value = yyyyMMdd;
+        option.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        dateSelect.appendChild(option);
       }
-
-      slots.forEach((slot) => {
-        const option = document.createElement("option");
-        option.value = slot.slotStartISO;
-        option.textContent = slot.timeLabel;
-        slotSelect.appendChild(option);
-      });
-    } catch (err) {
-      console.error("Failed to load slots:", err);
-      loadingMsg.textContent = "Error loading slots.";
     }
-  });
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    // STEP 2: Fetch available time slots when a date is selected
+    dateSelect.addEventListener('change', async () => {
+      const selectedDate = dateSelect.value;
+      slotSelect.innerHTML = '<option>Loading available time slots...</option>';
 
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
+      try {
+        const response = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedDate })
+        });
+        const slots = await response.json();
 
-    try {
-      const res = await fetch("https://hayan1024.app.n8n.cloud/submit-booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        alert("Appointment booked successfully!");
-        form.reset();
-        slotSelect.innerHTML = `<option value="">-- Select a Time Slot --</option>`;
-      } else {
-        alert("Error booking appointment.");
+        slotSelect.innerHTML = '';
+        if (slots.length === 0) {
+          slotSelect.innerHTML = '<option disabled selected>All slots booked. Try another date.</option>';
+        } else {
+          slotSelect.innerHTML = '<option value="">Select a time slot</option>';
+          slots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.slotStartISO;
+            option.textContent = slot.timeLabel;
+            slotSelect.appendChild(option);
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching slots:', err);
+        slotSelect.innerHTML = '<option disabled selected>Error loading slots</option>';
       }
-    } catch (err) {
-      console.error("Submit error:", err);
-      alert("Network error.");
-    }
-  });
+    });
 
-  window.addEventListener('DOMContentLoaded', generateDateOptions);
-</script>
+    // STEP 3: Submit full form to n8n on second webhook
+    document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-</body>
-</html>
+      const formData = {
+        fullName: e.target.fullName.value,
+        email: e.target.email.value,
+        phone: e.target.phone.value,
+        reason: e.target.reason.value,
+        selectedDate: e.target.selectedDate.value,
+        selectedSlot: e.target.selectedSlot.value
+      };
+
+      try {
+        const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/submit-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (res.ok) {
+          alert('Appointment booked successfully!');
+          e.target.reset();
+          slotSelect.innerHTML = '<option>Select a date first</option>';
+        } else {
+          alert('Booking failed. Ple
