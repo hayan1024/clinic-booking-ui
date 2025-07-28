@@ -1,179 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clinic Appointment Booking</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <script>
-      const fetchSlots = async (date) => {
-        const res = await fetch(
-          'https://hayan1024.app.n8n.cloud/webhook-test/available-slots?date=' + date
-        );
-        const data = await res.json();
-        return data.slots || [];
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clinic Appointment Booking</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.4rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      font-weight: bold;
+      border: none;
+      margin-top: 1.5rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <h1>Book Your Appointment</h1>
+  <form id="bookingForm">
+    <label for="fullName">Full Name:</label>
+    <input type="text" id="fullName" name="fullName" required />
+
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required />
+
+    <label for="phone">Phone:</label>
+    <input type="tel" id="phone" name="phone" required />
+
+    <label for="reason">Reason for Visit:</label>
+    <textarea id="reason" name="reason" rows="3" required></textarea>
+
+    <label for="date">Select Date:</label>
+    <input type="date" id="date" name="date" required />
+
+    <label for="time">Select Time Slot:</label>
+    <select id="time" name="time" required>
+      <option value="">Select a time slot</option>
+    </select>
+
+    <button type="submit">Book Appointment</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('bookingForm');
+    const timeSelect = document.getElementById('time');
+
+    const updateTimeSlots = async () => {
+      const selectedDate = document.getElementById('date').value;
+      if (!selectedDate) return;
+
+      const payload = {
+        fullName: document.getElementById('fullName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        reason: document.getElementById('reason').value,
+        date: selectedDate
       };
 
-      const updateTimeSlots = async () => {
-        const dateSelect = document.getElementById('date');
-        const timeSelect = document.getElementById('time');
-        const loader = document.getElementById('loader');
-
-        loader.style.display = 'block';
-        timeSelect.innerHTML = '<option value="">Loading...</option>';
-
-        const slots = await fetchSlots(dateSelect.value);
-
-        loader.style.display = 'none';
-        timeSelect.innerHTML = '<option value="">Select a time slot (optional)</option>';
-
-        slots.forEach((slot) => {
-          const option = document.createElement('option');
-          option.value = slot.value;
-          option.textContent = slot.label;
-          timeSelect.appendChild(option);
-        });
-      };
-
-      const generateDateOptions = () => {
-        const dateSelect = document.getElementById('date');
-        const today = new Date();
-
-        for (let i = 0; i < 7; i++) {
-          const date = new Date();
-          date.setDate(today.getDate() + i);
-
-          // Skip Sundays (0 = Sunday)
-          if (date.getDay() === 0) continue;
-
-          const option = document.createElement('option');
-          const value = date.toISOString().split('T')[0];
-          const label = date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric'
-          });
-
-          option.value = value;
-          option.textContent = label;
-          dateSelect.appendChild(option);
-        }
-      };
-
-      window.addEventListener('DOMContentLoaded', () => {
-        generateDateOptions();
-        document.getElementById('date').addEventListener('change', updateTimeSlots);
-
-        const form = document.getElementById('booking-form');
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-
-          const formData = new FormData(form);
-          const payload = Object.fromEntries(formData.entries());
-
-          const response = await fetch(
-            'https://hayan1024.app.n8n.cloud/webhook-test/available-slots',
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            }
-          );
-
-          if (response.ok) {
-            alert('Form submitted successfully!');
-            form.reset();
-            document.getElementById('time').innerHTML = '';
-          } else {
-            alert('Failed to submit. Please try again.');
+      try {
+        const response = await fetch(
+          'https://hayan1024.app.n8n.cloud/webhook-test/available-slots',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
           }
-        });
-      });
-    </script>
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background: #f9fafb;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 2rem;
-      }
-      .container {
-        background: white;
-        padding: 2rem;
-        border-radius: 1rem;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        max-width: 500px;
-        width: 100%;
-      }
-      h2 {
-        text-align: center;
-        margin-bottom: 1.5rem;
-      }
-      label {
-        font-weight: 600;
-        display: block;
-        margin: 1rem 0 0.25rem;
-      }
-      input,
-      select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-      }
-      button {
-        background: #2563eb;
-        color: white;
-        padding: 0.75rem;
-        border: none;
-        border-radius: 0.5rem;
-        width: 100%;
-        margin-top: 1.5rem;
-        font-size: 1rem;
-        cursor: pointer;
-      }
-      #loader {
-        display: none;
-        text-align: center;
-        font-size: 0.9rem;
-        margin-top: 0.5rem;
-        color: #555;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h2>Clinic Appointment Form</h2>
-      <form id="booking-form">
-        <label for="fullName">Full Name</label>
-        <input type="text" name="fullName" placeholder="e.g. John Doe" required />
+        );
 
-        <label for="email">Email</label>
-        <input type="email" name="email" placeholder="e.g. john@example.com" required />
+        const data = await response.json();
 
-        <label for="phone">Phone Number</label>
-        <input type="tel" name="phone" placeholder="e.g. +966-500000000" required />
+        timeSelect.innerHTML = '<option value="">Select a time slot</option>';
 
-        <label for="reason">Reason for Visit</label>
-        <input type="text" name="reason" placeholder="e.g. Back pain consultation" required />
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((slot) => {
+            const option = document.createElement('option');
+            option.value = slot.value;
+            option.textContent = slot.label;
+            timeSelect.appendChild(option);
+          });
+        } else {
+          const option = document.createElement('option');
+          option.textContent = 'No available slots';
+          option.disabled = true;
+          timeSelect.appendChild(option);
+        }
+      } catch (error) {
+        console.error('Failed to fetch slots:', error);
+        alert('Something went wrong while loading time slots.');
+      }
+    };
 
-        <label for="date">Select Appointment Date</label>
-        <select name="date" id="date" required></select>
+    document.getElementById('date').addEventListener('change', updateTimeSlots);
 
-        <label for="time">Available Time Slot</label>
-        <select name="time" id="time">
-          <option value="">Select a time slot (optional)</option>
-        </select>
-        <div id="loader">Loading available time slots...</div>
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-        <button type="submit">Book Appointment</button>
-      </form>
-    </div>
-  </body>
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      if (!payload.time) {
+        alert('⚠️ Please select a time slot before booking.');
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          'https://hayan1024.app.n8n.cloud/webhook-test/submit-booking',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        if (response.ok) {
+          alert('✅ Appointment booked successfully!');
+          form.reset();
+          timeSelect.innerHTML = '<option value="">Select a time slot</option>';
+        } else {
+          alert('❌ Booking failed. Please try again.');
+        }
+      } catch (error) {
+        console.error('Booking error:', error);
+        alert('❌ Failed to connect. Please try again later.');
+      }
+    });
+  </script>
+</body>
 </html>
