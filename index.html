@@ -3,164 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Appointment Booking</title>
+  <title>Clinic Appointment Form</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
       max-width: 600px;
       margin: auto;
-      background: #f9f9f9;
-    }
-    h1 {
-      text-align: center;
-    }
-    form {
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     label {
       display: block;
       margin-top: 1rem;
-      font-weight: bold;
     }
-    input, select, textarea, button {
+    select, input, textarea, button {
       width: 100%;
-      padding: 0.6rem;
-      margin-top: 0.4rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 1rem;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
     }
-    button {
-      background-color: #28a745;
-      color: white;
-      font-weight: bold;
-      border: none;
-      margin-top: 1.5rem;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #218838;
+    #loadingSlots, #noSlots {
+      color: #d9534f;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
 <body>
-  <h1>Book Your Appointment</h1>
-  <form id="bookingForm">
-    <label for="fullName">Full Name:</label>
-    <input type="text" id="fullName" name="fullName" required />
 
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required />
+<h2>Clinic Appointment Form</h2>
 
-    <label for="phone">Phone:</label>
-    <input type="tel" id="phone" name="phone" required />
+<form id="appointmentForm">
+  <label>Full Name
+    <input type="text" name="fullName" required />
+  </label>
 
-    <label for="reason">Reason for Visit:</label>
-    <textarea id="reason" name="reason" rows="3" required></textarea>
+  <label>Email
+    <input type="email" name="email" required />
+  </label>
 
-    <label for="date">Select Date:</label>
-    <input type="date" id="date" name="date" required />
+  <label>Phone Number
+    <input type="text" name="phone" required />
+  </label>
 
-    <label for="time">Select Time Slot:</label>
-    <select id="time" name="time" required>
-      <option value="">Select a time slot</option>
+  <label>Reason for Visit
+    <textarea name="reason" required></textarea>
+  </label>
+
+  <label>Select Appointment Date
+    <select name="selectedDate" id="selectedDate" required>
+      <option value="">-- Select a Date --</option>
+      <option value="2025-07-29">Tuesday, Jul 29</option>
+      <option value="2025-07-30">Wednesday, Jul 30</option>
+      <option value="2025-07-31">Thursday, Jul 31</option>
     </select>
+  </label>
 
-    <button type="submit">Book Appointment</button>
-  </form>
+  <div id="loadingSlots" style="display:none;">Loading available time slots...</div>
+  <div id="noSlots" style="display:none;">All slots booked. Please try another date.</div>
 
-  <script>
-    const form = document.getElementById('bookingForm');
-    const timeSelect = document.getElementById('time');
+  <label>Available Time Slot
+    <select name="selectedSlot" id="selectedSlot" required>
+      <option value="">-- Select a Time Slot --</option>
+    </select>
+  </label>
 
-    const updateTimeSlots = async () => {
-      const selectedDate = document.getElementById('date').value;
-      if (!selectedDate) return;
+  <button type="submit">Book Appointment</button>
+</form>
 
-      const payload = {
-        fullName: document.getElementById('fullName').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        reason: document.getElementById('reason').value,
-        date: selectedDate
-      };
+<script>
+const dateSelect = document.getElementById("selectedDate");
+const slotSelect = document.getElementById("selectedSlot");
+const loadingMsg = document.getElementById("loadingSlots");
+const noSlotsMsg = document.getElementById("noSlots");
+const form = document.getElementById("appointmentForm");
 
-      try {
-        const response = await fetch(
-          'https://hayan1024.app.n8n.cloud/webhook-test/available-slots',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          }
-        );
+dateSelect.addEventListener("change", async () => {
+  const selectedDate = dateSelect.value;
+  slotSelect.innerHTML = `<option value="">-- Select a Time Slot --</option>`;
+  noSlotsMsg.style.display = "none";
 
-        const data = await response.json();
+  if (!selectedDate) return;
 
-        timeSelect.innerHTML = '<option value="">Select a time slot</option>';
+  loadingMsg.style.display = "block";
 
-        if (Array.isArray(data) && data.length > 0) {
-          data.forEach((slot) => {
-            const option = document.createElement('option');
-            option.value = slot.value;
-            option.textContent = slot.label;
-            timeSelect.appendChild(option);
-          });
-        } else {
-          const option = document.createElement('option');
-          option.textContent = 'No available slots';
-          option.disabled = true;
-          timeSelect.appendChild(option);
-        }
-      } catch (error) {
-        console.error('Failed to fetch slots:', error);
-        alert('Something went wrong while loading time slots.');
-      }
-    };
-
-    document.getElementById('date').addEventListener('change', updateTimeSlots);
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const formData = new FormData(form);
-      const payload = Object.fromEntries(formData.entries());
-
-      if (!payload.time) {
-        alert('⚠️ Please select a time slot before booking.');
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          'https://hayan1024.app.n8n.cloud/webhook-test/submit-booking',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          }
-        );
-
-        if (response.ok) {
-          alert('✅ Appointment booked successfully!');
-          form.reset();
-          timeSelect.innerHTML = '<option value="">Select a time slot</option>';
-        } else {
-          alert('❌ Booking failed. Please try again.');
-        }
-      } catch (error) {
-        console.error('Booking error:', error);
-        alert('❌ Failed to connect. Please try again later.');
-      }
+  try {
+    const res = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedDate }),
     });
-  </script>
+
+    const slots = await res.json();
+    loadingMsg.style.display = "none";
+
+    if (!Array.isArray(slots) || slots.length === 0) {
+      noSlotsMsg.style.display = "block";
+      return;
+    }
+
+    slots.forEach((slot) => {
+      const option = document.createElement("option");
+      option.value = slot.slotStartISO;
+      option.textContent = slot.timeLabel;
+      slotSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Failed to load slots:", err);
+    loadingMsg.textContent = "Error loading slots.";
+  }
+});
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch("https://hayan1024.app.n8n.cloud/submit-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (res.ok) {
+      alert("Appointment booked successfully!");
+      form.reset();
+      slotSelect.innerHTML = `<option value="">-- Select a Time Slot --</option>`;
+    } else {
+      alert("Error booking appointment.");
+    }
+  } catch (err) {
+    console.error("Submit error:", err);
+    alert("Network error.");
+  }
+});
+</script>
+
 </body>
 </html>
