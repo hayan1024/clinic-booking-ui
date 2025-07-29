@@ -3,213 +3,161 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Appointment Form</title>
+  <title>Clinic Booking</title>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: #f7f9fc;
-      padding: 20px;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
 
     .container {
-      max-width: 600px;
-      margin: auto;
       background: #fff;
       padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 420px;
     }
 
     h2 {
       text-align: center;
-      color: #1a1a1a;
+      color: #1f2937;
+      margin-bottom: 20px;
     }
 
     label {
       display: block;
-      margin-top: 20px;
+      margin-top: 15px;
       font-weight: 600;
-      color: #333;
+      color: #374151;
     }
 
-    input, select, textarea, button {
+    select, button {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       margin-top: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid #d1d5db;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 16px;
     }
 
     button {
-      background-color: #1e90ff;
+      background-color: #3b82f6;
       color: white;
-      font-weight: 600;
       border: none;
-      cursor: pointer;
-      transition: background 0.3s ease;
+      font-weight: bold;
       margin-top: 20px;
+      cursor: pointer;
     }
 
     button:hover {
-      background-color: #0073e6;
+      background-color: #2563eb;
     }
 
-    #slotLoading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #888;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .error {
-      color: #e63946;
-      margin-top: 10px;
+    .no-slots {
+      color: #b91c1c;
+      font-weight: bold;
+      margin-top: 15px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Clinic Appointment Form</h2>
-    <form id="appointmentForm">
-      <label>Full Name</label>
-      <input type="text" name="name" required />
+    <h2>Book Your Appointment</h2>
 
-      <label>Email</label>
-      <input type="email" name="email" required />
+    <label for="date">Select Date</label>
+    <select id="dateSelect" onchange="fetchTimeSlots(this.value)">
+      <!-- Dates will be populated dynamically -->
+    </select>
 
-      <label>Phone Number</label>
-      <input type="text" name="phone" required />
+    <label for="slot">Select Time Slot</label>
+    <select id="slotSelect">
+      <option disabled selected>Choose a time slot</option>
+    </select>
 
-      <label>Reason for Visit</label>
-      <textarea name="reason" required></textarea>
+    <div id="noSlotsMessage" class="no-slots" style="display: none;">All slots are booked. Please try another date.</div>
 
-      <label>Select Appointment Date</label>
-      <select id="dateSelect" name="date" required></select>
-
-      <label>Available Time Slot</label>
-      <select id="slotSelect" name="slot" class="hidden" required></select>
-      <div id="slotLoading" class="hidden">Loading available time slots...</div>
-      <div id="slotError" class="error hidden"></div>
-
-      <button type="submit" disabled>Book Appointment</button>
-    </form>
+    <button onclick="submitBooking()">Confirm Booking</button>
   </div>
 
   <script>
-    const dateSelect = document.getElementById("dateSelect");
-    const slotSelect = document.getElementById("slotSelect");
-    const slotLoading = document.getElementById("slotLoading");
-    const slotError = document.getElementById("slotError");
-    const bookButton = document.querySelector("button");
+    const slotSelect = document.getElementById('slotSelect');
+    const noSlotsMessage = document.getElementById('noSlotsMessage');
 
-    // Helper: get next 7 dates (Mon-Sat only)
-    function getNext7Dates() {
-      const dates = [];
+    function generateNextWeekdays() {
+      const dateSelect = document.getElementById('dateSelect');
       const today = new Date();
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const weekday = d.getDay(); // 0 = Sunday
-        if (weekday === 0) continue;
-
-        const dateISO = d.toISOString().split("T")[0];
-        const label = d.toLocaleDateString("en-US", {
-          weekday: "long", month: "short", day: "numeric"
-        });
-        dates.push({ label, value: dateISO });
+      let count = 0;
+      for (let i = 0; count < 7; i++) {
+        const date = new Date();
+        date.setDate(today.getDate() + i);
+        const weekday = date.getDay();
+        if (weekday === 0) continue; // Skip Sunday
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const formattedDate = `${yyyy}-${mm}-${dd}`;
+        const option = document.createElement('option');
+        option.value = formattedDate;
+        option.textContent = formattedDate;
+        dateSelect.appendChild(option);
+        count++;
       }
-      return dates;
     }
 
-    // Populate date dropdown
-    getNext7Dates().forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.value;
-      opt.textContent = d.label;
-      dateSelect.appendChild(opt);
-    });
-
-    // On date change → fetch time slots
-    dateSelect.addEventListener("change", async () => {
-      const selectedDate = dateSelect.value;
-      if (!selectedDate) return;
-
-      // Reset slot state
-      slotSelect.innerHTML = "";
-      slotSelect.classList.add("hidden");
-      slotError.classList.add("hidden");
-      slotLoading.classList.remove("hidden");
-      bookButton.disabled = true;
+    async function fetchTimeSlots(selectedDate) {
+      slotSelect.innerHTML = '<option disabled selected>Loading...</option>';
+      noSlotsMessage.style.display = 'none';
 
       try {
-        const response = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const response = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ selectedDate })
         });
 
         const slots = await response.json();
-        slotLoading.classList.add("hidden");
 
-        if (!slots.length) {
-          slotError.textContent = "All appointments for this date are fully booked. Please choose another date.";
-          slotError.classList.remove("hidden");
-          return;
-        }
+        slotSelect.innerHTML = ''; // Clear previous options
 
-        slots.forEach(slot => {
-          const opt = document.createElement("option");
-          opt.value = slot.value;
-          opt.textContent = slot.label;
-          slotSelect.appendChild(opt);
-        });
-
-        slotSelect.classList.remove("hidden");
-        bookButton.disabled = false;
-
-      } catch (err) {
-        slotLoading.classList.add("hidden");
-        slotError.textContent = "Error fetching slots. Please try again.";
-        slotError.classList.remove("hidden");
-      }
-    });
-
-    // Final form submission
-    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const data = {
-        name: e.target.name.value,
-        email: e.target.email.value,
-        phone: e.target.phone.value,
-        reason: e.target.reason.value,
-        date: e.target.date.value,
-        slot: e.target.slot.value
-      };
-
-      try {
-        const res = await fetch("https://hayan1024.app.n8n.cloud/submit-booking", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-
-        if (res.ok) {
-          alert("Appointment booked successfully!");
-          e.target.reset();
-          slotSelect.classList.add("hidden");
-          bookButton.disabled = true;
+        if (Array.isArray(slots) && slots.length > 0) {
+          for (const slot of slots) {
+            const option = document.createElement('option');
+            option.value = slot.slotStartISO;
+            option.textContent = slot.timeLabel;
+            slotSelect.appendChild(option);
+          }
         } else {
-          alert("Failed to book appointment.");
+          slotSelect.innerHTML = '';
+          noSlotsMessage.style.display = 'block';
         }
       } catch (error) {
-        alert("Server error. Please try again.");
+        console.error('Error fetching slots:', error);
+        slotSelect.innerHTML = '';
+        noSlotsMessage.textContent = 'Something went wrong. Please try again.';
+        noSlotsMessage.style.display = 'block';
       }
-    });
+    }
+
+    function submitBooking() {
+      const selectedDate = document.getElementById('dateSelect').value;
+      const selectedSlot = slotSelect.value;
+      if (!selectedDate || !selectedSlot) {
+        alert('Please select both date and time slot.');
+        return;
+      }
+
+      // Do whatever you want next: e.g., send POST to /submit-booking
+      alert(`Submitting booking for ${selectedDate} at ${selectedSlot}`);
+    }
+
+    // Initial setup
+    generateNextWeekdays();
   </script>
 </body>
 </html>
