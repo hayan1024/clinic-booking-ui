@@ -3,24 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Appointment Form</title>
+  <title>Clinic Appointment</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
-      background: #f7f9fc;
-      padding: 20px;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 40px 20px;
     }
-    .container {
+    .form-container {
       max-width: 600px;
       margin: auto;
       background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     }
     h2 {
       text-align: center;
-      color: #1a1a1a;
+      color: #222;
+      margin-bottom: 24px;
     }
     label {
       display: block;
@@ -32,39 +34,41 @@
       width: 100%;
       padding: 12px;
       margin-top: 8px;
-      border: 1px solid #ddd;
       border-radius: 8px;
+      border: 1px solid #ccc;
       font-size: 15px;
     }
     button {
-      background-color: #1e90ff;
+      background: #1e90ff;
       color: white;
-      font-weight: 600;
       border: none;
+      font-weight: 600;
+      margin-top: 30px;
       cursor: pointer;
       transition: background 0.3s ease;
-      margin-top: 20px;
     }
     button:hover {
-      background-color: #0073e6;
-    }
-    #slotLoading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #888;
+      background: #0073e6;
     }
     .hidden {
       display: none;
     }
     .error {
-      color: #e63946;
       margin-top: 10px;
+      color: #e63946;
+      font-size: 14px;
+    }
+    .loading {
+      font-style: italic;
+      color: #777;
+      font-size: 14px;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Clinic Appointment Form</h2>
+  <div class="form-container">
+    <h2>Book a Clinic Appointment</h2>
     <form id="appointmentForm">
       <label>Full Name</label>
       <input type="text" name="name" required />
@@ -76,14 +80,15 @@
       <input type="tel" name="phone" required pattern="[0-9+ ]{7,15}" placeholder="+966 5XXXXXXXX" />
 
       <label>Reason for Visit</label>
-      <textarea name="reason" required></textarea>
+      <textarea name="reason" rows="3" required></textarea>
 
-      <label>Select Appointment Date</label>
+      <label>Appointment Date</label>
       <select id="dateSelect" name="date" required></select>
 
-      <label>Available Time Slot</label>
+      <label class="hidden" id="slotLabel">Available Time Slot</label>
       <select id="slotSelect" name="slot" class="hidden" required></select>
-      <div id="slotLoading" class="hidden">Loading available time slots...</div>
+
+      <div id="slotLoading" class="loading hidden">Loading available time slots...</div>
       <div id="slotError" class="error hidden"></div>
 
       <button type="submit" disabled>Book Appointment</button>
@@ -93,38 +98,44 @@
   <script>
     const dateSelect = document.getElementById("dateSelect");
     const slotSelect = document.getElementById("slotSelect");
+    const slotLabel = document.getElementById("slotLabel");
     const slotLoading = document.getElementById("slotLoading");
     const slotError = document.getElementById("slotError");
     const bookButton = document.querySelector("button");
 
-    // Get next 7 days (Mon-Sat only)
-    function getNextDates() {
-      const dates = [];
+    // Generate Mon–Sat dates (next 7 days)
+    function getNextAvailableDates() {
       const today = new Date();
+      const days = [];
       for (let i = 0; i < 7; i++) {
-        const d = new Date();
-        d.setDate(today.getDate() + i);
-        if (d.getDay() === 0) continue; // skip Sunday
-        const iso = d.toISOString().split("T")[0];
-        const label = d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
-        dates.push({ label, value: iso });
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        if (date.getDay() === 0) continue; // skip Sundays
+        const value = date.toISOString().split("T")[0];
+        const label = date.toLocaleDateString("en-US", {
+          weekday: "long", month: "short", day: "numeric"
+        });
+        days.push({ label, value });
       }
-      return dates;
+      return days;
     }
 
-    getNextDates().forEach(d => {
+    // Fill date dropdown
+    getNextAvailableDates().forEach(d => {
       const opt = document.createElement("option");
       opt.value = d.value;
       opt.textContent = d.label;
       dateSelect.appendChild(opt);
     });
 
+    // When date changes → fetch slots
     dateSelect.addEventListener("change", async () => {
       const selectedDate = dateSelect.value;
       if (!selectedDate) return;
 
       slotSelect.innerHTML = "";
       slotSelect.classList.add("hidden");
+      slotLabel.classList.add("hidden");
       slotError.classList.add("hidden");
       slotLoading.classList.remove("hidden");
       bookButton.disabled = true;
@@ -135,13 +146,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ selectedDate })
         });
-        const slots = await res.json();
-        if (!Array.isArray(slots)) throw new Error("Invalid slot format");
 
+        const slots = await res.json();
         slotLoading.classList.add("hidden");
 
-        if (!slots.length) {
-          slotError.textContent = "No slots available on this date. Try another.";
+        if (!Array.isArray(slots) || !slots.length) {
+          slotError.textContent = "No slots available on this date.";
           slotError.classList.remove("hidden");
           return;
         }
@@ -154,17 +164,20 @@
         });
 
         slotSelect.classList.remove("hidden");
+        slotLabel.classList.remove("hidden");
         bookButton.disabled = false;
 
       } catch (err) {
         slotLoading.classList.add("hidden");
-        slotError.textContent = "Error fetching slots.";
+        slotError.textContent = "Failed to load slots. Try again.";
         slotError.classList.remove("hidden");
       }
     });
 
+    // Submit form
     document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+
       const data = {
         name: e.target.name.value,
         email: e.target.email.value,
@@ -182,15 +195,16 @@
         });
 
         if (res.ok) {
-          alert("Appointment booked!");
+          alert("Appointment booked successfully!");
           e.target.reset();
           slotSelect.classList.add("hidden");
+          slotLabel.classList.add("hidden");
           bookButton.disabled = true;
         } else {
-          alert("Booking failed.");
+          alert("Failed to book appointment.");
         }
       } catch (err) {
-        alert("Network error.");
+        alert("Network error. Try again later.");
       }
     });
   </script>
