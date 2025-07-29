@@ -147,10 +147,14 @@
           body: JSON.stringify({ selectedDate })
         });
 
-        const slots = await res.json();
+        const slotArrayWrapper = await res.json();
+
+        // Final format is: [{ label, value }, ...]
+        const slots = Array.isArray(slotArrayWrapper) ? slotArrayWrapper : [];
+
         slotLoading.classList.add("hidden");
 
-        if (!Array.isArray(slots) || !slots.length) {
+        if (!slots.length) {
           slotError.textContent = "No slots available on this date.";
           slotError.classList.remove("hidden");
           return;
@@ -168,6 +172,7 @@
         bookButton.disabled = false;
 
       } catch (err) {
+        console.error("Slot fetch error:", err);
         slotLoading.classList.add("hidden");
         slotError.textContent = "Failed to load slots. Try again.";
         slotError.classList.remove("hidden");
