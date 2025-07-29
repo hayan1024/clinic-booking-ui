@@ -1,165 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Clinic Appointment Booking</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clinic Appointment Form</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f5f8fa;
-      padding: 2rem;
-      color: #333;
+      font-family: "Segoe UI", sans-serif;
+      background: #f7f9fc;
+      padding: 20px;
     }
 
     .container {
-      max-width: 500px;
-      margin: 0 auto;
-      background: #ffffff;
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-      padding: 2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 1rem;
+      color: #1a1a1a;
     }
 
-    select, button {
+    label {
+      display: block;
+      margin-top: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input, select, textarea, button {
       width: 100%;
       padding: 12px;
-      margin-top: 1rem;
-      font-size: 1rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      margin-top: 8px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
     }
 
     button {
-      background-color: #007bff;
+      background-color: #1e90ff;
       color: white;
-      cursor: pointer;
+      font-weight: 600;
       border: none;
-      transition: background 0.3s;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      margin-top: 20px;
     }
 
     button:hover {
-      background-color: #0056b3;
+      background-color: #0073e6;
+    }
+
+    #slotLoading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #888;
     }
 
     .hidden {
       display: none;
     }
 
-    .loading {
-      text-align: center;
-      font-size: 0.95rem;
-      color: #888;
-    }
-
     .error {
-      color: red;
-      text-align: center;
-      margin-top: 1rem;
+      color: #e63946;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Choose a Time Slot</h2>
+    <h2>Clinic Appointment Form</h2>
+    <form id="appointmentForm">
+      <label>Full Name</label>
+      <input type="text" name="name" required />
 
-    <div class="loading" id="loadingMsg">Fetching available slots...</div>
+      <label>Email</label>
+      <input type="email" name="email" required />
 
-    <select id="slotDropdown" class="hidden"></select>
+      <label>Phone Number</label>
+      <input type="text" name="phone" required />
 
-    <button id="confirmBtn" class="hidden">Confirm Appointment</button>
+      <label>Reason for Visit</label>
+      <textarea name="reason" required></textarea>
 
-    <div class="error" id="errorMsg"></div>
+      <label>Select Appointment Date</label>
+      <select id="dateSelect" name="date" required></select>
+
+      <label>Available Time Slot</label>
+      <select id="slotSelect" name="slot" class="hidden" required></select>
+      <div id="slotLoading" class="hidden">Loading available time slots...</div>
+      <div id="slotError" class="error hidden"></div>
+
+      <button type="submit" disabled>Book Appointment</button>
+    </form>
   </div>
 
   <script>
-    const dropdown = document.getElementById("slotDropdown");
-    const loadingMsg = document.getElementById("loadingMsg");
-    const confirmBtn = document.getElementById("confirmBtn");
-    const errorMsg = document.getElementById("errorMsg");
+    const dateSelect = document.getElementById("dateSelect");
+    const slotSelect = document.getElementById("slotSelect");
+    const slotLoading = document.getElementById("slotLoading");
+    const slotError = document.getElementById("slotError");
+    const bookButton = document.querySelector("button");
 
-    // 👇 Replace this with your working webhook endpoint
-    const slotsEndpoint = "https://hayan1024.app.n8n.cloud/webhook-test/available-slots";
+    // Helper: get next 7 dates (Mon-Sat only)
+    function getNext7Dates() {
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const weekday = d.getDay(); // 0 = Sunday
+        if (weekday === 0) continue;
 
-    // 📦 Patient data previously submitted (stored in sessionStorage from Step 1)
-    const patientData = JSON.parse(sessionStorage.getItem("patientData") || "{}");
+        const dateISO = d.toISOString().split("T")[0];
+        const label = d.toLocaleDateString("en-US", {
+          weekday: "long", month: "short", day: "numeric"
+        });
+        dates.push({ label, value: dateISO });
+      }
+      return dates;
+    }
 
-    const fetchSlots = async () => {
+    // Populate date dropdown
+    getNext7Dates().forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d.value;
+      opt.textContent = d.label;
+      dateSelect.appendChild(opt);
+    });
+
+    // On date change → fetch time slots
+    dateSelect.addEventListener("change", async () => {
+      const selectedDate = dateSelect.value;
+      if (!selectedDate) return;
+
+      // Reset slot state
+      slotSelect.innerHTML = "";
+      slotSelect.classList.add("hidden");
+      slotError.classList.add("hidden");
+      slotLoading.classList.remove("hidden");
+      bookButton.disabled = true;
+
       try {
-        const selectedDate = patientData.selectedDate;  // "YYYY-MM-DD"
-        if (!selectedDate) throw new Error("Missing selected date");
+        const response = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selectedDate })
+        });
 
-        const res = await fetch(`${slotsEndpoint}?date=${selectedDate}`);
-        const slots = await res.json();
+        const slots = await response.json();
+        slotLoading.classList.add("hidden");
 
-        if (!Array.isArray(slots) || slots.length === 0) {
-          throw new Error("No available slots");
+        if (!slots.length) {
+          slotError.textContent = "All appointments for this date are fully booked. Please choose another date.";
+          slotError.classList.remove("hidden");
+          return;
         }
 
-        dropdown.innerHTML = `<option value="">Select a time</option>`;
-
         slots.forEach(slot => {
-          const option = document.createElement("option");
-          option.value = slot.slotStartISO;
-          option.textContent = slot.timeLabel;
-          option.dataset.end = slot.slotEndISO;
-          dropdown.appendChild(option);
+          const opt = document.createElement("option");
+          opt.value = slot.value;
+          opt.textContent = slot.label;
+          slotSelect.appendChild(opt);
         });
 
-        loadingMsg.classList.add("hidden");
-        dropdown.classList.remove("hidden");
-        confirmBtn.classList.remove("hidden");
+        slotSelect.classList.remove("hidden");
+        bookButton.disabled = false;
 
       } catch (err) {
-        loadingMsg.classList.add("hidden");
-        errorMsg.textContent = "⚠️ Error fetching slots. Please try again.";
-      }
-    };
-
-    confirmBtn.addEventListener("click", async () => {
-      const selectedOption = dropdown.options[dropdown.selectedIndex];
-      const slotStartISO = selectedOption.value;
-      const slotEndISO = selectedOption.dataset.end;
-
-      if (!slotStartISO) {
-        alert("Please select a time slot");
-        return;
-      }
-
-      const fullPayload = {
-        ...patientData,
-        slotStartISO,
-        slotEndISO,
-        timeLabel: selectedOption.textContent,
-        submissionTime: new Date().toISOString()
-      };
-
-      try {
-        const res = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/submit-booking", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(fullPayload)
-        });
-
-        if (!res.ok) throw new Error();
-
-        alert("✅ Appointment confirmed!");
-        window.location.href = "success.html";  // Optional success page
-
-      } catch (err) {
-        alert("⚠️ Something went wrong while submitting. Try again.");
+        slotLoading.classList.add("hidden");
+        slotError.textContent = "Error fetching slots. Please try again.";
+        slotError.classList.remove("hidden");
       }
     });
 
-    // Run on load
-    fetchSlots();
+    // Final form submission
+    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const data = {
+        name: e.target.name.value,
+        email: e.target.email.value,
+        phone: e.target.phone.value,
+        reason: e.target.reason.value,
+        date: e.target.date.value,
+        slot: e.target.slot.value
+      };
+
+      try {
+        const res = await fetch("https://hayan1024.app.n8n.cloud/submit-booking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          alert("Appointment booked successfully!");
+          e.target.reset();
+          slotSelect.classList.add("hidden");
+          bookButton.disabled = true;
+        } else {
+          alert("Failed to book appointment.");
+        }
+      } catch (error) {
+        alert("Server error. Please try again.");
+      }
+    });
   </script>
 </body>
 </html>
