@@ -6,23 +6,25 @@
   <title>Clinic Appointment Form</title>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: #f7f9fc;
-      padding: 20px;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background: #f5f7fa;
+      padding: 30px;
     }
 
     .container {
       max-width: 600px;
       margin: auto;
       background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
     }
 
     h2 {
       text-align: center;
-      color: #1a1a1a;
+      color: #222;
+      font-size: 26px;
+      margin-bottom: 20px;
     }
 
     label {
@@ -36,9 +38,15 @@
       width: 100%;
       padding: 12px;
       margin-top: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 16px;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #1e90ff;
+      outline: none;
     }
 
     button {
@@ -48,17 +56,11 @@
       border: none;
       cursor: pointer;
       transition: background 0.3s ease;
-      margin-top: 20px;
+      margin-top: 24px;
     }
 
     button:hover {
       background-color: #0073e6;
-    }
-
-    #slotLoading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #888;
     }
 
     .hidden {
@@ -68,6 +70,25 @@
     .error {
       color: #e63946;
       margin-top: 10px;
+    }
+
+    #slotLoading {
+      font-style: italic;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    fieldset {
+      margin-top: 20px;
+      border: none;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+    }
+
+    legend {
+      font-weight: 700;
+      font-size: 18px;
+      color: #444;
     }
   </style>
 </head>
@@ -82,18 +103,22 @@
       <input type="email" name="email" required />
 
       <label>Phone Number</label>
-      <input type="text" name="phone" required />
+      <input type="tel" name="phone" required pattern="[0-9+ ]{7,15}" placeholder="+966 5XXXXXXXX" />
 
       <label>Reason for Visit</label>
-      <textarea name="reason" required></textarea>
+      <textarea name="reason" rows="3" required></textarea>
 
-      <label>Select Appointment Date</label>
-      <select id="dateSelect" name="date" required></select>
+      <fieldset>
+        <legend>Appointment Details</legend>
 
-      <label>Available Time Slot</label>
-      <select id="slotSelect" name="slot" class="hidden" required></select>
-      <div id="slotLoading" class="hidden">Loading available time slots...</div>
-      <div id="slotError" class="error hidden"></div>
+        <label>Select Appointment Date</label>
+        <select id="dateSelect" name="date" required></select>
+
+        <label>Available Time Slot</label>
+        <select id="slotSelect" name="slot" class="hidden" required></select>
+        <div id="slotLoading" class="hidden">Loading available time slots...</div>
+        <div id="slotError" class="error hidden"></div>
+      </fieldset>
 
       <button type="submit" disabled>Book Appointment</button>
     </form>
@@ -106,15 +131,14 @@
     const slotError = document.getElementById("slotError");
     const bookButton = document.querySelector("button");
 
-    // Helper: get next 7 dates (Mon-Sat only)
+    // Helper: get next 7 dates (Mon–Sat only)
     function getNext7Dates() {
       const dates = [];
       const today = new Date();
       for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
+        const d = new Date();
         d.setDate(today.getDate() + i);
-        const weekday = d.getDay(); // 0 = Sunday
-        if (weekday === 0) continue;
+        if (d.getDay() === 0) continue; // skip Sundays
 
         const dateISO = d.toISOString().split("T")[0];
         const label = d.toLocaleDateString("en-US", {
@@ -138,7 +162,7 @@
       const selectedDate = dateSelect.value;
       if (!selectedDate) return;
 
-      // Reset slot state
+      // Reset UI
       slotSelect.innerHTML = "";
       slotSelect.classList.add("hidden");
       slotError.classList.add("hidden");
@@ -153,6 +177,8 @@
         });
 
         const slots = await response.json();
+        if (!Array.isArray(slots)) throw new Error("Invalid response format");
+
         slotLoading.classList.add("hidden");
 
         if (!slots.length) {
