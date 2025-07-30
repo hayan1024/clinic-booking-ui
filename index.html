@@ -3,72 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Booking</title>
+  <title>Clinic Appointment Booking</title>
   <style>
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
+      background: #f2f8fc;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 40px 16px;
       min-height: 100vh;
     }
     .card {
-      background: #fff;
+      background: #ffffff;
+      padding: 32px;
       border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-      padding: 30px;
-      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 123, 255, 0.1);
       width: 100%;
+      max-width: 500px;
     }
     h2 {
       text-align: center;
+      color: #0077cc;
       margin-bottom: 24px;
-      color: #2c3e50;
     }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      color: #34495e;
+    .form-group {
+      position: relative;
+      margin-bottom: 24px;
     }
-    input, select, textarea {
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
       width: 100%;
-      padding: 10px 14px;
-      margin-bottom: 18px;
-      border: 1px solid #ccc;
+      padding: 14px 12px;
+      border: 1px solid #ccddee;
       border-radius: 8px;
       font-size: 1rem;
+      background: none;
     }
-    input:focus, select:focus, textarea:focus {
-      border-color: #0077ff;
-      outline: none;
+    .form-group label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-size: 0.85rem;
+      color: #0077cc;
+      background: white;
+      padding: 0 4px;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+    .form-group input:focus + label,
+    .form-group input:not(:placeholder-shown) + label,
+    .form-group textarea:focus + label,
+    .form-group textarea:not(:placeholder-shown) + label,
+    .form-group select:focus + label,
+    .form-group select:not([value=""]) + label {
+      top: -8px;
+      left: 8px;
+      font-size: 0.75rem;
+      background: #ffffff;
+      color: #0077cc;
     }
     textarea {
       resize: vertical;
     }
     button {
       width: 100%;
-      padding: 12px;
-      background: #0077ff;
+      padding: 14px;
+      background-color: #0077cc;
       color: white;
-      font-size: 1rem;
-      font-weight: bold;
       border: none;
       border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: background 0.3s ease;
     }
     button:disabled {
-      background: #aaa;
+      background-color: #aaa;
       cursor: not-allowed;
     }
-    .loading, .error {
+    .loading,
+    .error {
       font-size: 0.95rem;
-      margin-top: -10px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .loading {
       color: #555;
@@ -78,7 +97,7 @@
     }
     @media (max-width: 480px) {
       .card {
-        padding: 20px;
+        padding: 24px;
       }
     }
   </style>
@@ -87,30 +106,37 @@
   <div class="card">
     <h2>Book Your Appointment</h2>
     <form id="bookingForm">
-      <label for="name">Full Name</label>
-      <input type="text" id="name" name="name" required placeholder="John Doe" />
+      <div class="form-group">
+        <input type="text" id="name" name="name" required placeholder=" " />
+        <label for="name">Full Name</label>
+      </div>
+      <div class="form-group">
+        <input type="email" id="email" name="email" required placeholder=" " />
+        <label for="email">Email</label>
+      </div>
+      <div class="form-group">
+        <input type="tel" id="phone" name="phone" required pattern="^(\+966\s?5\d{8})$" placeholder=" " />
+        <label for="phone">Phone Number (+966 5XXXXXXXX)</label>
+      </div>
+      <div class="form-group">
+        <textarea id="reason" name="reason" rows="3" required placeholder=" "></textarea>
+        <label for="reason">Reason for Visit</label>
+      </div>
+      <div class="form-group">
+        <select id="date" name="date" required>
+          <option value="" selected disabled hidden></option>
+        </select>
+        <label for="date">Appointment Date</label>
+      </div>
+      <div class="form-group">
+        <select id="slot" name="slot" required disabled>
+          <option value="" selected>Select a date first</option>
+        </select>
+        <label for="slot">Available Time Slot</label>
+      </div>
 
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required placeholder="john@example.com" />
-
-      <label for="phone">Phone Number</label>
-      <input type="tel" id="phone" name="phone" required pattern="^(\+966\s?5\d{8})$" placeholder="+966 5XXXXXXXX" />
-
-      <label for="reason">Reason for Visit</label>
-      <textarea id="reason" name="reason" rows="3" required placeholder="Describe your concern..."></textarea>
-
-      <label for="date">Appointment Date</label>
-      <select id="date" name="date" required>
-        <option value="">Select a date</option>
-      </select>
-
-      <label for="slot">Available Time Slot</label>
-      <select id="slot" name="slot" disabled>
-        <option value="">Select a date first</option>
-      </select>
-
-      <div class="loading" id="loading" style="display:none;">⏳ Loading time slots...</div>
-      <div class="error" id="slotError" style="display:none;">❌ Could not load slots or none available.</div>
+      <div class="loading" id="loading" style="display:none;">⏳ Loading available time slots...</div>
+      <div class="error" id="slotError" style="display:none;">❌ No slots found or server error.</div>
 
       <button type="submit" id="submitBtn" disabled>Book Appointment</button>
     </form>
@@ -123,17 +149,14 @@
     const loadingText = document.getElementById("loading");
     const slotError = document.getElementById("slotError");
 
-    // Populate next 7 weekdays (Mon–Sat)
+    // Generate next 7 Mon–Sat dates
     function populateDates() {
       const today = new Date();
-      let added = 0;
-      let offset = 0;
-
+      let added = 0, offset = 0;
       while (added < 7) {
         const date = new Date();
         date.setDate(today.getDate() + offset);
         const day = date.getDay();
-
         if (day !== 0) { // skip Sundays
           const yyyyMMdd = date.toISOString().split('T')[0];
           const option = document.createElement("option");
@@ -152,7 +175,7 @@
       const selectedDate = dateSelect.value;
       if (!selectedDate) return;
 
-      slotSelect.innerHTML = "";
+      slotSelect.innerHTML = "<option value=''>Select a time slot</option>";
       slotSelect.disabled = true;
       submitBtn.disabled = true;
       loadingText.style.display = "block";
@@ -170,12 +193,6 @@
         if (!Array.isArray(data) || data.length === 0) {
           throw new Error("No slots");
         }
-
-        const defaultOption = document.createElement("option");
-        defaultOption.textContent = "Select a time slot";
-        defaultOption.disabled = true;
-        defaultOption.selected = true;
-        slotSelect.appendChild(defaultOption);
 
         data.forEach(slot => {
           const option = document.createElement("option");
