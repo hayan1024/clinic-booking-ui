@@ -3,77 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Appointment Booking</title>
+  <title>Clinic Booking</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
     body {
+      margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: #f5f8fb;
+      background: #f0f4f8;
       display: flex;
       justify-content: center;
-      padding: 40px 16px;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
     }
     .card {
       background: #fff;
-      padding: 24px;
       border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      padding: 30px;
       max-width: 500px;
       width: 100%;
     }
     h2 {
       text-align: center;
       margin-bottom: 24px;
-      color: #333;
+      color: #2c3e50;
     }
     label {
       display: block;
       margin-bottom: 6px;
       font-weight: 600;
+      color: #34495e;
     }
-    input, select, textarea, button {
+    input, select, textarea {
       width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 20px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
       border: 1px solid #ccc;
       border-radius: 8px;
       font-size: 1rem;
-    }
-    textarea {
-      resize: vertical;
     }
     input:focus, select:focus, textarea:focus {
       border-color: #0077ff;
       outline: none;
     }
+    textarea {
+      resize: vertical;
+    }
     button {
-      background-color: #0077ff;
+      width: 100%;
+      padding: 12px;
+      background: #0077ff;
       color: white;
+      font-size: 1rem;
       font-weight: bold;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background 0.3s;
     }
     button:disabled {
       background: #aaa;
       cursor: not-allowed;
     }
-    .loading {
+    .loading, .error {
       font-size: 0.95rem;
-      margin-top: -15px;
-      margin-bottom: 15px;
+      margin-top: -10px;
+      margin-bottom: 14px;
+    }
+    .loading {
       color: #555;
     }
     .error {
       color: #d00;
-      font-size: 0.9rem;
-      margin-top: -15px;
-      margin-bottom: 15px;
     }
     @media (max-width: 480px) {
       .card {
-        padding: 16px;
+        padding: 20px;
       }
     }
   </style>
@@ -83,26 +88,29 @@
     <h2>Book Your Appointment</h2>
     <form id="bookingForm">
       <label for="name">Full Name</label>
-      <input type="text" id="name" name="name" required />
+      <input type="text" id="name" name="name" required placeholder="John Doe" />
 
       <label for="email">Email</label>
-      <input type="email" id="email" name="email" required />
+      <input type="email" id="email" name="email" required placeholder="john@example.com" />
 
       <label for="phone">Phone Number</label>
       <input type="tel" id="phone" name="phone" required pattern="^(\+966\s?5\d{8})$" placeholder="+966 5XXXXXXXX" />
 
       <label for="reason">Reason for Visit</label>
-      <textarea id="reason" name="reason" rows="3"></textarea>
+      <textarea id="reason" name="reason" rows="3" required placeholder="Describe your concern..."></textarea>
 
       <label for="date">Appointment Date</label>
-      <select id="date" name="date" required></select>
+      <select id="date" name="date" required>
+        <option value="">Select a date</option>
+      </select>
 
       <label for="slot">Available Time Slot</label>
       <select id="slot" name="slot" disabled>
         <option value="">Select a date first</option>
       </select>
-      <div class="loading" id="loading" style="display:none;">Loading slots...</div>
-      <div class="error" id="slotError" style="display:none;">No slots available or error fetching slots.</div>
+
+      <div class="loading" id="loading" style="display:none;">⏳ Loading time slots...</div>
+      <div class="error" id="slotError" style="display:none;">❌ Could not load slots or none available.</div>
 
       <button type="submit" id="submitBtn" disabled>Book Appointment</button>
     </form>
@@ -115,25 +123,30 @@
     const loadingText = document.getElementById("loading");
     const slotError = document.getElementById("slotError");
 
-    // Populate next 7 days (Mon–Sat only, skip Sundays)
-    function generateDates() {
+    // Populate next 7 weekdays (Mon–Sat)
+    function populateDates() {
       const today = new Date();
-      let count = 0;
-      while (count < 7) {
+      let added = 0;
+      let offset = 0;
+
+      while (added < 7) {
         const date = new Date();
-        date.setDate(today.getDate() + count);
-        if (date.getDay() !== 0) { // Skip Sundays
+        date.setDate(today.getDate() + offset);
+        const day = date.getDay();
+
+        if (day !== 0) { // skip Sundays
           const yyyyMMdd = date.toISOString().split('T')[0];
           const option = document.createElement("option");
           option.value = yyyyMMdd;
           option.textContent = date.toDateString();
           dateSelect.appendChild(option);
+          added++;
         }
-        count++;
+        offset++;
       }
     }
 
-    generateDates();
+    populateDates();
 
     dateSelect.addEventListener("change", async () => {
       const selectedDate = dateSelect.value;
@@ -151,6 +164,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ selectedDate })
         });
+
         const data = await response.json();
 
         if (!Array.isArray(data) || data.length === 0) {
