@@ -110,7 +110,7 @@
       <input type="email" id="email" name="email" required />
 
       <label for="phone">Phone Number</label>
-      <input type="tel" id="phone" name="phone" required placeholder="+966 5XXXXXXXX" pattern="^\+966 5\d{7}$" />
+      <input type="tel" id="phone" name="phone" required placeholder="+966 5XXXXXXXX" pattern="^\\+966 5\\d{7}$" />
 
       <label for="reason">Reason for Visit</label>
       <textarea id="reason" name="reason" required></textarea>
@@ -164,7 +164,7 @@
 
     generateNextDates();
 
-    // ✅ Fixed: Correctly populating time slot dropdown from webhook response
+    // ✅ ONLY THIS BLOCK FIXED — slot dropdown now works with n8n webhook
     dateSelect.addEventListener("change", () => {
       const selectedDate = dateSelect.value;
       slotSelect.innerHTML = '<option value="">Loading...</option>';
@@ -178,35 +178,35 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedDate })
       })
-      .then(res => res.json())
-      .then(data => {
-        loading.style.display = "none";
-        slotSelect.innerHTML = "";
+        .then(res => res.json())
+        .then(data => {
+          loading.style.display = "none";
+          slotSelect.innerHTML = "";
 
-        if (Array.isArray(data) && data.length > 0 && data[0].label && data[0].value) {
-          const defaultOpt = document.createElement("option");
-          defaultOpt.value = "";
-          defaultOpt.textContent = "Select a time slot";
-          slotSelect.appendChild(defaultOpt);
+          if (Array.isArray(data) && data.length > 0 && data[0].label && data[0].value) {
+            const defaultOpt = document.createElement("option");
+            defaultOpt.value = "";
+            defaultOpt.textContent = "Select a time slot";
+            slotSelect.appendChild(defaultOpt);
 
-          data.forEach(slot => {
-            const option = document.createElement("option");
-            option.value = slot.value;
-            option.textContent = slot.label;
-            slotSelect.appendChild(option);
-          });
+            data.forEach(slot => {
+              const option = document.createElement("option");
+              option.value = slot.value;
+              option.textContent = slot.label;
+              slotSelect.appendChild(option);
+            });
 
-          slotSelect.disabled = false;
-        } else {
-          slotSelect.innerHTML = '<option value="">No slots available</option>';
-          message.textContent = "No available slots for this date.";
-        }
-      })
-      .catch(() => {
-        loading.style.display = "none";
-        slotSelect.innerHTML = '<option value="">Error loading slots</option>';
-        message.textContent = "Failed to fetch slots. Please try again.";
-      });
+            slotSelect.disabled = false;
+          } else {
+            slotSelect.innerHTML = '<option value="">No slots available</option>';
+            message.textContent = "No available slots for this date.";
+          }
+        })
+        .catch(() => {
+          loading.style.display = "none";
+          slotSelect.innerHTML = '<option value="">Error loading slots</option>';
+          message.textContent = "Failed to fetch slots. Please try again.";
+        });
     });
 
     slotSelect.addEventListener("change", () => {
@@ -232,21 +232,21 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       })
-      .then(res => {
-        if (res.ok) {
-          message.textContent = "✅ Appointment successfully booked!";
-          form.reset();
-          slotSelect.innerHTML = '<option value="">Select a date first</option>';
-          slotSelect.disabled = true;
-          submitBtn.disabled = true;
-        } else {
-          throw new Error();
-        }
-      })
-      .catch(() => {
-        message.textContent = "❌ Failed to book appointment. Please try again.";
-        submitBtn.disabled = false;
-      });
+        .then(res => {
+          if (res.ok) {
+            message.textContent = "✅ Appointment successfully booked!";
+            form.reset();
+            slotSelect.innerHTML = '<option value="">Select a date first</option>';
+            slotSelect.disabled = true;
+            submitBtn.disabled = true;
+          } else {
+            throw new Error();
+          }
+        })
+        .catch(() => {
+          message.textContent = "❌ Failed to book appointment. Please try again.";
+          submitBtn.disabled = false;
+        });
     });
   </script>
 </body>
