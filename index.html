@@ -13,7 +13,6 @@
       display: flex;
       justify-content: center;
     }
-
     .container {
       max-width: 600px;
       width: 100%;
@@ -22,20 +21,17 @@
       border-radius: 1rem;
       box-shadow: 0 8px 24px rgba(0,0,0,0.1);
     }
-
     h2 {
       text-align: center;
       margin-bottom: 1.5rem;
       color: #1e293b;
     }
-
     label {
       display: block;
       margin-top: 1rem;
       font-weight: 600;
       color: #334155;
     }
-
     input, select, textarea {
       width: 100%;
       padding: 0.75rem;
@@ -44,7 +40,6 @@
       border-radius: 0.5rem;
       font-size: 1rem;
     }
-
     button {
       background-color: #2563eb;
       color: white;
@@ -56,19 +51,16 @@
       width: 100%;
       cursor: pointer;
     }
-
     button:disabled {
       background-color: #93c5fd;
       cursor: not-allowed;
     }
-
     #loader {
       margin-top: 0.5rem;
       font-style: italic;
       color: #64748b;
       display: none;
     }
-
     .error {
       color: #ef4444;
       margin-top: 0.5rem;
@@ -93,7 +85,9 @@
       <textarea name="reason" rows="3" required></textarea>
 
       <label>Select Appointment Date</label>
-      <select id="dateSelect" name="date" required></select>
+      <select id="dateSelect" name="date" required>
+        <option value="" disabled selected>Select a date</option>
+      </select>
 
       <label>Available Time Slot</label>
       <select id="slotSelect" name="slot" required class="hidden"></select>
@@ -126,12 +120,12 @@
       return dates;
     }
 
+    // Populate date dropdown
     const dateOptions = getNext7Dates();
-    dateOptions.forEach((d, idx) => {
+    dateOptions.forEach(d => {
       const opt = document.createElement("option");
       opt.value = d.value;
       opt.textContent = d.label;
-      if (idx === 0) opt.selected = true; // auto-select first valid date
       dateSelect.appendChild(opt);
     });
 
@@ -149,7 +143,7 @@
           body: JSON.stringify({ selectedDate })
         });
 
-        const slots = await res.json();
+        const slots = await res.json(); // Expecting array directly
         loader.style.display = "none";
 
         if (!Array.isArray(slots) || slots.length === 0) {
@@ -157,6 +151,7 @@
           return;
         }
 
+        slotSelect.innerHTML = '<option value="" disabled selected>Select time slot</option>';
         slots.forEach(slot => {
           const opt = document.createElement("option");
           opt.value = slot.value;
@@ -176,11 +171,6 @@
     dateSelect.addEventListener("change", () => {
       const selectedDate = dateSelect.value;
       if (selectedDate) loadSlots(selectedDate);
-    });
-
-    // auto-load for pre-selected date on first load
-    window.addEventListener("DOMContentLoaded", () => {
-      if (dateSelect.value) loadSlots(dateSelect.value);
     });
 
     document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
