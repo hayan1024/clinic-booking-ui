@@ -126,15 +126,16 @@
       return dates;
     }
 
-    getNext7Dates().forEach(d => {
+    const dateOptions = getNext7Dates();
+    dateOptions.forEach((d, idx) => {
       const opt = document.createElement("option");
       opt.value = d.value;
       opt.textContent = d.label;
+      if (idx === 0) opt.selected = true; // auto-select first valid date
       dateSelect.appendChild(opt);
     });
 
-    dateSelect.addEventListener("change", async () => {
-      const selectedDate = dateSelect.value;
+    async function loadSlots(selectedDate) {
       slotSelect.innerHTML = "";
       loader.style.display = "block";
       error.style.display = "none";
@@ -170,6 +171,16 @@
         loader.style.display = "none";
         error.style.display = "block";
       }
+    }
+
+    dateSelect.addEventListener("change", () => {
+      const selectedDate = dateSelect.value;
+      if (selectedDate) loadSlots(selectedDate);
+    });
+
+    // auto-load for pre-selected date on first load
+    window.addEventListener("DOMContentLoaded", () => {
+      if (dateSelect.value) loadSlots(dateSelect.value);
     });
 
     document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
