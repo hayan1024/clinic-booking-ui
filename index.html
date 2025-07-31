@@ -211,13 +211,54 @@
       successMsg.style.display = 'none';
       errorMsg.style.display = 'none';
       
+      // Parse the selected time slot to create start and end times
+      const selectedSlot = form.slot.value;
+      let startTime = selectedSlot;
+      let endTime = selectedSlot;
+      
+      // If the slot is in ISO format, parse it and add 30 minutes for end time
+      if (selectedSlot && selectedSlot.includes('T')) {
+        // Parse the datetime string manually to preserve timezone
+        const timezoneMatch = selectedSlot.match(/^(.+)([+-]\d{2}:\d{2})$/);
+        if (timezoneMatch) {
+          const [, dateTimePart, timezone] = timezoneMatch;
+          const [datePart, timePart] = dateTimePart.split('T');
+          const [hours, minutes, seconds] = timePart.split(':');
+          
+          // Calculate end time by adding 30 minutes
+          let endHours = parseInt(hours);
+          let endMinutes = parseInt(minutes) + 30;
+          
+          if (endMinutes >= 60) {
+            endMinutes -= 60;
+            endHours += 1;
+          }
+          
+          // Format with leading zeros
+          const formattedEndHours = String(endHours).padStart(2, '0');
+          const formattedEndMinutes = String(endMinutes).padStart(2, '0');
+          
+          // Construct the times preserving the original timezone
+          startTime = selectedSlot;
+          endTime = ${datePart}T${formattedEndHours}:${formattedEndMinutes}:${seconds || '00'}${timezone};
+        } else {
+          // Fallback for standard ISO format without timezone
+          const startDate = new Date(selectedSlot);
+          const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+          startTime = startDate.toISOString();
+          endTime = endDate.toISOString();
+        }
+      }
+      
       const data = {
         name: form.name.value,
         email: form.email.value,
         phone: form.phone.value,
         reason: form.reason.value,
         date: form.date.value,
-        timeSlot: form.slot.value
+        startTime: startTime,
+        endTime: endTime,
+        timeSlot: selectedSlot // Keep original for backward compatibility
       };
       
       console.log('Submitting booking data:', data);
