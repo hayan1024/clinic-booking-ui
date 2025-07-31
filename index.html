@@ -2,214 +2,294 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clinic Appointment Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic Appointment Booking</title>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      background: #f7f9fc;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
       padding: 20px;
-    }
-
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    }
-
-    h2 {
-      text-align: center;
-      color: #1a1a1a;
-    }
-
-    label {
-      display: block;
-      margin-top: 20px;
-      font-weight: 600;
+      background-color: #f0f6ff;
       color: #333;
     }
-
-    input, select, textarea, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 8px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 15px;
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-
+    h2 {
+      text-align: center;
+      color: #0077cc;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
     button {
-      background-color: #1e90ff;
+      background-color: #0077cc;
       color: white;
-      font-weight: 600;
       border: none;
       cursor: pointer;
-      transition: background 0.3s ease;
       margin-top: 20px;
     }
-
     button:hover {
-      background-color: #0073e6;
+      background-color: #005fa3;
     }
-
-    #slotLoading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #888;
+    .success {
+      margin-top: 20px;
+      color: green;
+      text-align: center;
     }
-
-    .hidden {
-      display: none;
-    }
-
     .error {
-      color: #e63946;
-      margin-top: 10px;
+      color: red;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Clinic Appointment Form</h2>
-    <form id="appointmentForm">
-      <label>Full Name</label>
-      <input type="text" name="name" required />
+    <h2>Book Your Appointment</h2>
+    <form id="bookingForm">
+      <label for="name">Full Name</label>
+      <input type="text" id="name" name="name" required />
 
-      <label>Email</label>
-      <input type="email" name="email" required />
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
 
-      <label>Phone Number</label>
-      <input type="text" name="phone" required />
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" name="phone" required />
 
-      <label>Reason for Visit</label>
-      <textarea name="reason" required></textarea>
+      <label for="reason">Reason for Visit</label>
+      <textarea id="reason" name="reason" required></textarea>
 
-      <label>Select Appointment Date</label>
-      <select id="dateSelect" name="date" required></select>
+      <label for="date">Select Date</label>
+      <select id="date" name="date" required>
+        <option value="">Select Date</option>
+      </select>
 
-      <label>Available Time Slot</label>
-      <select id="slotSelect" name="slot" class="hidden" required></select>
-      <div id="slotLoading" class="hidden">Loading available time slots...</div>
-      <div id="slotError" class="error hidden"></div>
+      <label for="slot">Available Time Slots</label>
+      <select id="slot" name="slot">
+        <option value="">Select Time Slot</option>
+      </select>
 
-      <button type="submit" disabled>Book Appointment</button>
+      <button type="submit">Book Appointment</button>
     </form>
+    <div class="success" id="successMsg" style="display:none;">Appointment booked successfully!</div>
+    <div class="error" id="errorMsg" style="display:none;">An error occurred. Please try again.</div>
   </div>
 
   <script>
-    const dateSelect = document.getElementById("dateSelect");
-    const slotSelect = document.getElementById("slotSelect");
-    const slotLoading = document.getElementById("slotLoading");
-    const slotError = document.getElementById("slotError");
-    const bookButton = document.querySelector("button");
+    const dateSelect = document.getElementById('date');
+    const slotSelect = document.getElementById('slot');
+    const form = document.getElementById('bookingForm');
+    const successMsg = document.getElementById('successMsg');
+    const errorMsg = document.getElementById('errorMsg');
 
-    // Helper: get next 7 dates (Mon-Sat only)
-    function getNext7Dates() {
-      const dates = [];
+    // Generate next 7 days (excluding Sundays)
+    const generateDates = () => {
       const today = new Date();
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const weekday = d.getDay(); // 0 = Sunday
-        if (weekday === 0) continue;
-
-        const dateISO = d.toISOString().split("T")[0];
-        const label = d.toLocaleDateString("en-US", {
-          weekday: "long", month: "short", day: "numeric"
-        });
-        dates.push({ label, value: dateISO });
+      let daysAdded = 0;
+      let i = 0;
+      
+      while (daysAdded < 7) {
+        const date = new Date();
+        date.setDate(today.getDate() + i);
+        i++;
+        
+        if (date.getDay() === 0) continue; // Skip Sunday
+        
+        // Use local timezone instead of UTC to avoid date shifting
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const isoDate = ${year}-${month}-${day};
+        
+        const option = document.createElement('option');
+        option.value = isoDate;
+        option.text = date.toDateString();
+        dateSelect.appendChild(option);
+        daysAdded++;
+        
+        console.log('Generated date (local):', isoDate, '-', date.toDateString());
       }
-      return dates;
-    }
+    };
 
-    // Populate date dropdown
-    getNext7Dates().forEach(d => {
-      const opt = document.createElement("option");
-      opt.value = d.value;
-      opt.textContent = d.label;
-      dateSelect.appendChild(opt);
-    });
-
-    // On date change → fetch time slots
-    dateSelect.addEventListener("change", async () => {
+    dateSelect.addEventListener('change', async () => {
       const selectedDate = dateSelect.value;
-      if (!selectedDate) return;
-
-      // Reset slot state
-      slotSelect.innerHTML = "";
-      slotSelect.classList.add("hidden");
-      slotError.classList.add("hidden");
-      slotLoading.classList.remove("hidden");
-      bookButton.disabled = true;
-
+      console.log('Selected date:', selectedDate);
+      
+      slotSelect.innerHTML = '<option value="">Loading...</option>';
       try {
-        const response = await fetch("https://hayan1024.app.n8n.cloud/webhook-test/available-slots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selectedDate })
+        console.log('Sending request to webhook with date:', selectedDate);
+        const response = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/available-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: selectedDate })
         });
-
-        const slots = await response.json();
-        slotLoading.classList.add("hidden");
-
-        if (!slots.length) {
-          slotError.textContent = "All appointments for this date are fully booked. Please choose another date.";
-          slotError.classList.remove("hidden");
-          return;
+        
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+          throw new Error(HTTP error! status: ${response.status});
         }
-
-        slots.forEach(slot => {
-          const opt = document.createElement("option");
-          opt.value = slot.value;
-          opt.textContent = slot.label;
+        
+        const slots = await response.json();
+        console.log('Received slots:', slots);
+        console.log('Slots type:', typeof slots);
+        console.log('Is array:', Array.isArray(slots));
+        
+        slotSelect.innerHTML = '<option value="">Select Time Slot</option>';
+        
+        // Handle different possible data formats
+        let slotsArray = slots;
+        
+        // If slots is an object with a data/slots/items property, extract it
+        if (!Array.isArray(slots) && typeof slots === 'object') {
+          if (slots.data) slotsArray = slots.data;
+          else if (slots.slots) slotsArray = slots.slots;
+          else if (slots.items) slotsArray = slots.items;
+          else if (slots.availableSlots) slotsArray = slots.availableSlots;
+          else {
+            // If it's an object but not in expected format, try to convert it to array
+            slotsArray = Object.entries(slots).map(([key, value]) => ({
+              value: key,
+              label: value
+            }));
+          }
+        }
+        
+        console.log('Processed slots array:', slotsArray);
+        
+        if (Array.isArray(slotsArray) && slotsArray.length > 0) {
+          slotsArray.forEach((slot, index) => {
+            console.log(Slot ${index}:, slot);
+            const opt = document.createElement('option');
+            
+            // Handle different slot object formats
+            if (typeof slot === 'string') {
+              opt.value = slot;
+              opt.textContent = slot;
+            } else if (typeof slot === 'object') {
+              // Try different property names for value and label
+              opt.value = slot.value || slot.id || slot.time || slot.slot || index;
+              opt.textContent = slot.label || slot.text || slot.name || slot.time || slot.value || slot.id || slot;
+            } else {
+              opt.value = slot;
+              opt.textContent = slot;
+            }
+            
+            slotSelect.appendChild(opt);
+            console.log(Added option: value="${opt.value}", text="${opt.textContent}");
+          });
+        } else {
+          console.log('No slots available or invalid format');
+          const opt = document.createElement('option');
+          opt.textContent = 'No available slots';
           slotSelect.appendChild(opt);
-        });
-
-        slotSelect.classList.remove("hidden");
-        bookButton.disabled = false;
-
+        }
       } catch (err) {
-        slotLoading.classList.add("hidden");
-        slotError.textContent = "Error fetching slots. Please try again.";
-        slotError.classList.remove("hidden");
+        console.error('Error fetching slots:', err);
+        slotSelect.innerHTML = '<option value="">Error loading slots</option>';
       }
     });
 
-    // Final form submission
-    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-
+      successMsg.style.display = 'none';
+      errorMsg.style.display = 'none';
+      
+      // Parse the selected time slot to create start and end times
+      const selectedSlot = form.slot.value;
+      let startTime = selectedSlot;
+      let endTime = selectedSlot;
+      
+      // If the slot is in ISO format, parse it and add 30 minutes for end time
+      if (selectedSlot && selectedSlot.includes('T')) {
+        // Parse the datetime string manually to preserve timezone
+        const timezoneMatch = selectedSlot.match(/^(.+)([+-]\d{2}:\d{2})$/);
+        if (timezoneMatch) {
+          const [, dateTimePart, timezone] = timezoneMatch;
+          const [datePart, timePart] = dateTimePart.split('T');
+          const [hours, minutes, seconds] = timePart.split(':');
+          
+          // Calculate end time by adding 30 minutes
+          let endHours = parseInt(hours);
+          let endMinutes = parseInt(minutes) + 30;
+          
+          if (endMinutes >= 60) {
+            endMinutes -= 60;
+            endHours += 1;
+          }
+          
+          // Format with leading zeros
+          const formattedEndHours = String(endHours).padStart(2, '0');
+          const formattedEndMinutes = String(endMinutes).padStart(2, '0');
+          
+          // Construct the times preserving the original timezone
+          startTime = selectedSlot;
+          endTime = ${datePart}T${formattedEndHours}:${formattedEndMinutes}:${seconds || '00'}${timezone};
+        } else {
+          // Fallback for standard ISO format without timezone
+          const startDate = new Date(selectedSlot);
+          const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+          startTime = startDate.toISOString();
+          endTime = endDate.toISOString();
+        }
+      }
+      
       const data = {
-        name: e.target.name.value,
-        email: e.target.email.value,
-        phone: e.target.phone.value,
-        reason: e.target.reason.value,
-        date: e.target.date.value,
-        slot: e.target.slot.value
+        name: form.name.value,
+        email: form.email.value,
+        phone: form.phone.value,
+        reason: form.reason.value,
+        date: form.date.value,
+        startTime: startTime,
+        endTime: endTime,
+        timeSlot: selectedSlot // Keep original for backward compatibility
       };
-
+      
+      console.log('Submitting booking data:', data);
+      
       try {
-        const res = await fetch("https://hayan1024.app.n8n.cloud/submit-booking", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res = await fetch('https://hayan1024.app.n8n.cloud/webhook-test/submit-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
-
+        
+        console.log('Booking response status:', res.status);
+        console.log('Booking response ok:', res.ok);
+        
         if (res.ok) {
-          alert("Appointment booked successfully!");
-          e.target.reset();
-          slotSelect.classList.add("hidden");
-          bookButton.disabled = true;
+          const responseData = await res.json().catch(() => ({}));
+          console.log('Booking response data:', responseData);
+          successMsg.style.display = 'block';
+          form.reset();
+          slotSelect.innerHTML = '<option value="">Select Time Slot</option>';
         } else {
-          alert("Failed to book appointment.");
+          const errorText = await res.text().catch(() => 'Unknown error');
+          throw new Error(Booking failed: ${res.status} - ${errorText});
         }
       } catch (error) {
-        alert("Server error. Please try again.");
+        console.error('Booking error:', error);
+        errorMsg.style.display = 'block';
       }
     });
+
+    generateDates();
   </script>
 </body>
 </html>
